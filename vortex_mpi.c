@@ -6,20 +6,20 @@
 #include <time.h>
 #include <string.h>
 
-const int N = 5000;             // Iterations
-const int frame_interval = 500; // Iterations between exporting data
+// Exactly ONE of each of the following must be defined for MPI task distribution:
+const char processor_split[15] = "EQUAL_AREA";          // Equal area of computation (adaptive no. of columns)
+//const char processor_split[15] = "EQUAL_WIDTH";       // Equal MPI computation widths (equal no. of columns)
+
+const int N = 500;             // Iterations
+const int frame_interval = 100; // Iterations between exporting data
 const int NX = 520;             // x resolution
 const int NY = 180;             // y resolution
-
-// Exactly ONE of each of the following must be defined:
-//const char processor_split[15] = "EQUAL_WIDTH";       // Equal MPI computation widths (equal no. of columns)
-const char processor_split[15] = "EQUAL_AREA";          // Equal area of computation (adaptive no. of columns)
-
-const char file_path[128] = "mpi_img/";        // Path where files are saved
 
 const double uw = 0.1;          // Initial fluid speed in x
 const double Re = 55.;          // Reynolds number
 const double rho_0 = 1.;        // Initial pressure
+
+const char file_path[128] = "mpi_img/"; // Path where files are saved
 
 const int ex[] = {0, 1, -1, 0, 0, 1, -1, -1, 1};    // Vector directions of distribution func.
 const int ey[] = {0, 0, 0, 1, -1, 1, -1, 1, -1};    // Vector directions of distribution func.
@@ -37,6 +37,7 @@ int size, rank;
 // DEFINE FUNCTIONS
 
 // Functions to return the location of data in arrays:
+// (this was done to allow timing experiments by reversing locations)
 unsigned int scalar(unsigned int x, unsigned int y) { return NY * x + y; }
 unsigned int scalar3(unsigned int x, unsigned int y) { return 3 * x + y; }
 unsigned int vector(unsigned int x, unsigned int y, unsigned int z) { return 9 * (NY * x + y) + z; }
@@ -78,7 +79,6 @@ int image(double image[], char name[], unsigned int num)
     val[1] = (double) NY;
     val[2] = (double) num;
 
-    #pragma omp parralel for
     for (int x = 0; x < NX; x++)
     {
         for (int y = 0; y < NY; y++)
@@ -255,17 +255,8 @@ int main()
 
     
     // Initialise various timers
-    double amdahl_s_time = 0;
-    double amdahl_p_time = - MPI_Wtime();
-
     double T = - MPI_Wtime();     // Counts code time
     double t = - MPI_Wtime();     // Counts code time
-
-    double count_log[TC];       // Logs time gate times
-    int count_type[TC];         // Logs time gate time types
-    
-    // Initialises timer if starting on step = 0
-    time_gate(-1, 0, count_log, count_type);
 
     //-----------------------------------------------------\\
     //                      MAIN LOOP                      \\
@@ -282,15 +273,11 @@ int main()
             if (step % 10 == 0 & step > 0)
             {
                 t =  (t + MPI_Wtime()) / 10.;
-                printf("\rstep: %d  loop_time: %.05f", step, t);
+                printf("\rstep: %d  loop_time: %.05f s", step, t);
                 fflush(stdout);
                 t = - MPI_Wtime();
             }
         }
-
-        // Start timer at start of first applicable loop
-        // TIME GATE 0 - Computation
-        time_gate(step, 0, count_log, count_type);
 
         // Data/Image output
         if (step % frame_interval == 0)
@@ -314,23 +301,10 @@ int main()
                 }
             }
 
-            // TIME GATE 1 - Computation
-            time_gate(step, 0, count_log, count_type);
-            // Barrier doesn't interrupt flow due to blocking communications, but allows idle timing
-            MPI_Barrier(MPI_COMM_WORLD);
-            // TIME GATE 2 - Idle
-            time_gate(step, 1, count_log, count_type);
-
             // Gather rhos into img_rho on rank 0
             MPI_Gatherv(rho, rank_xnum * NY, MPI_DOUBLE, img_rho, col_nums, col_starts, MPI_DOUBLE, 0, MPI_COMM_WORLD);
             // Gather vels into img_vel on rank 1
             MPI_Gatherv(vel, rank_xnum * NY, MPI_DOUBLE, img_vel, col_nums, col_starts, MPI_DOUBLE, 1, MPI_COMM_WORLD);
-
-            // TIME GATE 3 - Communication
-            time_gate(step, 2, count_log, count_type);
-
-            if (rank == 0) amdahl_p_time += MPI_Wtime();
-            if (rank == 0) amdahl_s_time -= MPI_Wtime();
 
             // Data saving is the only serial part to ensure 
             //  no data is corrupted
@@ -339,12 +313,6 @@ int main()
                 image(img_rho, "rho", (step / frame_interval));
             if (rank == 1)
                 image(img_vel, "vel", (step / frame_interval));
-
-            // TIME GATE 4 - Saving
-            time_gate(step, 3, count_log, count_type);
-
-            if (rank == 0) amdahl_s_time += MPI_Wtime();
-            if (rank == 0) amdahl_p_time -= MPI_Wtime();
         }
 
 
@@ -452,13 +420,6 @@ int main()
             }
         }
 
-        // TIME GATE 5 - Computation
-        time_gate(step, 0, count_log, count_type);
-        // Barrier doesn't interrupt flow due to blocking communications, but allows idle timing
-        MPI_Barrier(MPI_COMM_WORLD);
-        // TIME GATE 6 - Idle
-        time_gate(step, 1, count_log, count_type);
-
         //Send rightward elements to rank to the right
         if (rank < size - 1)
             MPI_Send(rightward, NY * 3, MPI_DOUBLE, rank + 1, 999, MPI_COMM_WORLD);
@@ -475,10 +436,7 @@ int main()
         //Receive leftward elements from block to the right
         if (rank < size - 1)
             MPI_Recv(leftward, NY * 3, MPI_DOUBLE, rank + 1, 111, MPI_COMM_WORLD, &status);
-
-        // TIME GATE 7 - Communication
-        time_gate(step, 2, count_log, count_type);
-
+        
         int mem[9] = {-1, 0, 0, -1, -1, 1, 2, 1, 2}; // -1 in unused positions
 
         // Streaming
@@ -522,72 +480,13 @@ int main()
         f = a;
     }
 
-    if (rank == 0) amdahl_p_time += MPI_Wtime();
-
-    // Send timing data to rank 0
-    if (rank > 0)
-        MPI_Send(count_log, TC, MPI_DOUBLE, 0, rank, MPI_COMM_WORLD);
-
-    // Save timing data
     if (rank == 0)
     {
-        FILE *f;
-
-        char str[256];
-        sprintf(str, "%sgantt_chart_data.txt", file_path);
-        f = fopen(str, "w");
-
-        // Check file is open
-        if (!f)
-        {
-            printf("\nCould not open file: %s\n", str);
-            printf("Aborting file write");
-            MPI_Finalize();
-            return 1;
-        }
-
-        // Write time types e.g. idle, communicating, computation...
-        char log_types[5] = "grbc";
-        char letter[5];
-        for (int i = 0; i < TC; i++)
-        {
-            sprintf(letter, "%c", log_types[count_type[i]]);
-            fwrite(letter, sizeof(char), 1, f);
-        }
-        fwrite("\n", sizeof(char), 1, f);
-
-        // Write times from rank 0
-        for (int i = 0; i < TC; i++)
-        {
-            sprintf(str, "%.08f\t", count_log[i]);
-            fwrite(str, sizeof(char), 11, f);
-        }
-
-        // Write times from other ranks
-        for (int i = 1; i < size; i++)
-        {
-            MPI_Status status;
-            MPI_Recv(count_log, TC, MPI_DOUBLE, i, i, MPI_COMM_WORLD, &status);
-
-            fwrite("\n", sizeof(char), 1, f);
-            for (int i = 0; i < TC; i++)
-            {
-                sprintf(str, "%.08f\t", count_log[i]);
-                fwrite(str, sizeof(char) * 11, 1, f);
-            }
-        }
-
         T += MPI_Wtime();
 
-        if (rank == 0)
-        {
-            printf("\nSimulation complete\n");
-            printf("Total time: %f\n", T);
-            printf("Files saved to $%s\n\n", file_path);
-        }
-
-        // Close text file
-        fclose(f);
+        printf("\nSimulation complete\n");
+        printf("Total time: %f\n", T);
+        printf("Files saved to %s\n", file_path);
     }
 
     MPI_Finalize();
