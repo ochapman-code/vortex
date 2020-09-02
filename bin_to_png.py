@@ -43,7 +43,6 @@ for img in imgs:
 	elif 'vel' in img:
 		plt.imshow(f.T, cmap="RdBu_r", origin='lower', vmin=0, vmax=0.2)
 		plt.colorbar(shrink=0.7, label='\nFluid Speed (m/s)')
-
 	
 	plt.tight_layout()
 	plt.savefig(img, dpi=150)   #Save file
