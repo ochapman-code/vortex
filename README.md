@@ -6,7 +6,7 @@
 
 Modelling fluids is a difficult task. It is computationally intensive, mathematically complex and expresses rich behaviours which are often hard to examine computationally. This code is designed to model Von Karman Vortices - an observable phenomenon which results in rhythmic oscilaltions from a randomly perturbed inital state.
 
-![img](mpi_vel.gif)
+![img](output_.gif)
 
 Figure 1: This gif shows the velocity in m/s of a fluid passing a circular boundary. The initial state is comprised of random fluctuations around 0.1 m/s which eventually lead to the Von Karman Vortices observed thereafter.
 
