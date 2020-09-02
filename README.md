@@ -18,10 +18,9 @@ This code also seeks to demonstrate the Message Passing Interface (MPI) which al
 
 This project was created and written on Linux, and run on the Bluecrystal supercomputer at the University of Bristol.
 
-The code is divided into three files:
+The code is divided into two files:
 1. `vortex_mpi.c` - This file contains the C code which runs the LBM simulation and outputs `.bin` files which contain density (rho) and velocity (vel) snapshots.
 2. `bin_to_png.py` - This file contains python code which creates the individual frames seen in the gif above.
-3. `mpi.sh` - This shell file is used to compile the C code using available optimisations and proceeds to run both the C and python files.
 
 #### Compiling
 
