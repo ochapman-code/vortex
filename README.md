@@ -22,3 +22,13 @@ The code is divided into three files:
 1. `vortex_mpi.c` - This file contains the C code which runs the LBM simulation and outputs `.bin` files which contain density (rho) and velocity (vel) snapshots.
 2. `bin_to_png.py` - This file contains python code which creates the individual frames seen in the gif above.
 3. `mpi.sh` - This shell file is used to compile the C code using available optimisations and proceeds to run both the C and python files.
+
+#### Compiling
+
+To compile with the greatest level of optimisation the `-O3` option is used:
+
+```mpicc lbm_mpi.c -lm -O3 -march=native -std=c99 -o mpi.out```
+
+Then to run the code use `mpiexec` with the number of parallel threads given by `-n 2`:
+
+```mpiexec ./mpi.out -n 2```
