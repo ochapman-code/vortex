@@ -26,7 +26,7 @@ The code is divided into two files:
 
 To compile with the greatest level of optimisation the `-O3` option is used:
 
-```mpicc lbm_mpi.c -lm -O3 -march=native -std=c99 -o mpi.out```
+```mpicc vortex_mpi.c -lm -O3 -march=native -std=c99 -o mpi.out```
 
 Then to run the code use `mpiexec` with the number of parallel threads given by `-n 2`:
 
