@@ -5,7 +5,6 @@ import glob
 import sys
 
 imgs = glob.glob("mpi_img/*.bin")   #Folder containing .bin files
-pngs = glob.glob("mpi_img/*.png")   #Folder containing .png files
 
 print("Converting .bin files to .png files")
 print("Total:", len(imgs))
