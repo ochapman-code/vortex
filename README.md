@@ -13,6 +13,8 @@ Figure 1: This gif shows the velocity in m/s of a fluid passing a circular bound
 
 This code also seeks to demonstrate the Message Passing Interface (MPI) which allows tasks to be distributed amongst several computational units to be run in parallel. With the aid of the highest level of optimisation provided by gcc, this parallelised C code is capable of running 1,000 to 10,000 faster than similar python code. Parallelisation is therefore a very powerful tool for physics simulations.
 
+The underlying solution demonstrates a method for increasing the runtime of Non-Linear Partial Differential Equations by using localised techniques. By splitting the problem into distinct regions, the problem can be calculated in parallel.
+
 
 #### Installation Notes
 
