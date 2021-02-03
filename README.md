@@ -18,7 +18,7 @@ The underlying solution demonstrates a method for increasing the runtime of Non-
 
 #### Installation Notes
 
-This project was created and written on Linux, and run on the Bluecrystal supercomputer at the University of Bristol.
+This project was created and written on a Linux distribution, and run on the Bluecrystal supercomputer at the University of Bristol.
 
 The code is divided into two files:
 1. `vortex_mpi.c` - This file contains the C code which runs the LBM simulation and outputs `.bin` files which contain density (rho) and velocity (vel) snapshots.
@@ -30,6 +30,10 @@ To compile with the greatest level of optimisation the `-O3` option is used:
 
 ```mpicc vortex_mpi.c -lm -O3 -march=native -std=c99 -o mpi.out```
 
-Then to run the code use `mpiexec` with the number of parallel threads given by `-n 2`:
+Then to run the code use `mpirun` with the number of parallel threads given by `-n 2`:
 
-```mpiexec ./mpi.out -n 2```
+```mpirun ./mpi.out -n 2```
+
+#### Notes
+1. A subdirectory `/vortex/mpi_img` should be created for the output binary files,
+2. MPI can be installed on Ubuntu machines using `sudo apt install mpich`.
